@@ -1,0 +1,54 @@
+# Document-grounded RAG configuration.
+#
+# To target a different chapter of the same book, change chapter.title ONLY.
+# Nothing else in this file or in src/ needs to change.
+
+pdf:
+  path: "Help Your Kids with Computer Science_ A Unique Visual Step-by-Step Guide to Computers, Coding, and Communication ( PDFDrive ).pdf"
+
+chapter:
+  # The single value that selects a chapter. Matched case-insensitively
+  # against the PDF's own table of contents.
+  #
+  # NOTE: the assessment brief says "chapter #6 (Data)", but this PDF's TOC
+  # puts "Data" at chapter 5 and "Programming techniques" at chapter 6.
+  # The title is treated as authoritative. To target the other reading,
+  # set this to "Programming techniques".
+  title: "Data"
+
+ingest:
+  dpi: 150
+  pipeline_version: "3"
+
+retrieval:
+  top_k: 5
+  candidates: 10
+  rrf_k: 60
+  # Refusal gate, calibrated against tests/eval/questions.yaml.
+  # Measured separation on the Data chapter:
+  #   lowest answerable   0.6811  ("How does a computer store a letter?")
+  #   highest must-refuse 0.6508  ("What is a search engine?")
+  # 0.66 sits inside that band. The margin is narrow because search engines
+  # are semantically adjacent to databases, which this chapter does cover.
+  # NOTE: gating on the FUSED (RRF) score does not work - RRF is rank-based,
+  # so the top score is near-constant. See docs/technical-decisions.md
+  gate_min_cosine: 0.66
+
+generation:
+  # The model mandated by the brief. As of 2026-10-18 OpenRouter has RETIRED
+  # its ":free" tier - the API replies 404 "This model is unavailable for
+  # free. The paid version is available now" - so this slug needs credits.
+  #
+  # Verified working substitute for a credit-less account (swap one line):
+  #   model: "nvidia/nemotron-3-super-120b-a12b:free"
+  #
+  # See docs/technical-decisions.md section 13.
+  model: "meta-llama/llama-3.3-70b-instruct"
+  base_url: "https://openrouter.ai/api/v1"
+  temperature: 0.2
+  max_tokens: 500
+  timeout_seconds: 60
+  max_retries: 3
+
+paths:
+  artifacts_dir: "artifacts"
