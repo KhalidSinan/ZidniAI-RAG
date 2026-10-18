@@ -1,0 +1,87 @@
+# Evaluation set for the "Data" chapter.
+#
+# Must-refuse cases are drawn mostly from OTHER CHAPTERS of the same book.
+# That is deliberate: out-of-chapter questions test chapter scoping, which is
+# what actually matters here. Nonsense questions prove very little, because
+# any retriever rejects them (FR-030, SC-002).
+
+questions:
+  # ---- answerable: content is in the Data chapter --------------------------
+  - question: "What is binary code?"
+    expect: answerable
+    source: data
+
+  - question: "How does a computer store a letter?"
+    expect: answerable
+    source: data
+
+  - question: "What is ASCII?"
+    expect: answerable
+    source: data
+
+  - question: "How are pictures stored on a computer?"
+    expect: answerable
+    source: data
+
+  - question: "What is encryption?"
+    expect: answerable
+    source: data
+
+  - question: "What is a database?"
+    expect: answerable
+    source: data
+
+  - question: "What does a logic gate do?"
+    expect: answerable
+    source: data
+
+  - question: "Why do computers use 0 and 1?"
+    expect: answerable
+    source: data
+
+  - question: "How is sound stored on a computer?"
+    expect: answerable
+    source: data
+
+  - question: "What is a pixel?"
+    expect: answerable
+    source: data
+
+  # ---- must refuse: other chapters of the same book ------------------------
+  - question: "What is a gaming console?"
+    expect: refuse
+    source: other-chapter
+    note: "Chapter 3, Hardware"
+
+  - question: "What is a compiler?"
+    expect: refuse
+    source: other-chapter
+    note: "Chapter 6, Programming techniques"
+
+  - question: "What is a search engine?"
+    expect: refuse
+    source: other-chapter
+    note: "Chapter 1, Getting started"
+
+  - question: "What is decomposition in computational thinking?"
+    expect: refuse
+    source: other-chapter
+    note: "Chapter 4, Computational thinking"
+
+  - question: "What is a wearable computer?"
+    expect: refuse
+    source: other-chapter
+    note: "Chapter 3, Hardware"
+
+  # ---- must refuse: nothing to do with the book ----------------------------
+  - question: "What did I eat for breakfast?"
+    expect: refuse
+    source: off-book
+
+  - question: "Who won the football World Cup?"
+    expect: refuse
+    source: off-book
+
+  - question: "How do I bake a chocolate cake?"
+    expect: refuse
+    source: off-book
