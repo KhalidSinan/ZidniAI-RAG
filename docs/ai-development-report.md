@@ -29,6 +29,15 @@ forced the refusal behaviour, the child-audience rule, and chapter
 reproducibility to be stated as testable requirements rather than discovered
 late.
 
+A **second iteration** followed once the core worked, run conversationally in
+Claude Code rather than through Spec Kit, each change on its own branch:
+
+| Branch | Change |
+|---|---|
+| `feat/web-ui` | Replaced the default Gradio screen with a FastAPI server and a hand-built page |
+| `feat/citations-rerank` | Citations with printed page numbers and quotes; cross-encoder reranking |
+| `docs/update` | This report, README and notebook brought in line with the code |
+
 ## Context provided to the AI
 
 1. **The brief** (`AI-task.md`), read in full and re-checked against the plan
@@ -50,8 +59,11 @@ Essentially all code production, plus:
 - PDF reconnaissance and measurement
 - Drafting spec, plan, research, data model, contracts, task breakdown
 - Implementation of all 14 modules
-- Test authoring (56 unit and contract tests)
+- Test authoring (now 70 unit and contract tests)
 - Calibration runs and validation scenarios
+- In the second iteration: the web interface's design and code, the
+  citation and quote pipeline, the reranker, labelling the eval set with
+  relevant passages, and the benchmark runs
 
 ## What was retained by the author
 
@@ -64,6 +76,15 @@ Essentially all code production, plus:
 - **Scope discipline.** Repeatedly directing the work to stay proportionate to
   a two-day deadline rather than building speculative features.
 - **Spec-driven method.** Choosing SDD over ad-hoc implementation.
+- **What the second iteration should contain.** The author asked for a
+  professional interface, visible citations, and a reranker, and asked for
+  an opinion on HyDE, multi-query retrieval and query contextualisation.
+  The AI recommended against the query-rewriting techniques (each adds a
+  paid model call, and HyDE would raise the very cosine the refusal gate
+  depends on) and recommended adopting the reranker only if a benchmark
+  showed gains. The author accepted both recommendations.
+- **Branching and publishing.** How the work was split into branches,
+  merged, and pushed.
 
 ## How generated code was reviewed and validated
 
@@ -95,8 +116,8 @@ which is evidence of generalisation rather than fitting.
 
 ### 3. Tests that encode the contracts
 
-56 tests, written from the contract documents rather than from the
-implementation. The strongest are the ones that would fail if a principle were
+56 tests at first delivery (70 now), written from the contract documents
+rather than from the implementation. The strongest are the ones that would fail if a principle were
 quietly violated:
 
 - a below-threshold question makes **zero** network calls (asserted by
@@ -124,6 +145,30 @@ contradicting a plausible plan:
   near-constant and cannot gate anything. Raw cosine separates 0.68–0.88 from
   0.42–0.65. This was a genuine design error that only running the code
   exposed.
+- **Reranker: adopted only after a benchmark.** The eval set had no notion of
+  *which* passage should answer a question, so ranking quality could not be
+  measured. Each answerable question was labelled with its relevant passages
+  and 8 harder paraphrased questions were added. Four rerankers were then
+  compared on one run: the chosen 80 MB model lifted hit@1 from 13/18 to
+  17/18; a 120 MB model tied it, so the smaller one won. Latency was measured
+  too (~1.2 s per answered question), which led to skipping the reranker
+  whenever the gate refuses.
+- **The harder questions exposed a limit, which was recorded, not hidden.**
+  Two in-chapter questions now fall below the cosine gate, overlapping with
+  the highest must-refuse question. The cross-encoder score was tested as an
+  alternative gate and overlaps too. The gate was left unchanged and the
+  finding documented (technical-decisions.md §14), rather than tuning a
+  threshold to 26 questions.
+
+### 5. Look at the output, not just the tests
+
+The interface was checked with headless-browser screenshots at desktop and
+narrow widths, in light and dark themes, for the welcome, answer and refusal
+states. One screenshot caught a real bug: a thumbnail captioned "Page 82"
+showed the printed number **80**. The PDF's page index runs two ahead of the
+book's printed numbering, so every page reference — and the citations about
+to be built on them — would have sent a child to the wrong page. Passages now
+store the PDF's own page labels.
 
 ## Where AI output needed correction
 
@@ -142,12 +187,38 @@ Being specific, since this is the substance of the question:
 - **Spec drift.** The spec was written before the constitution was ratified
   and contradicted it in two places. A six-principle audit caught both plus
   four further gaps.
+- **A bug the AI introduced itself.** The first version of the new interface
+  derived page captions from image file names (`p082.png` → "Page 82"), which
+  is the PDF's numbering, not the book's. Found by the screenshot check
+  above, not by any test.
+- **A misleading measurement.** The first reranker latency reading was taken
+  while a 1 GB model benchmark was still running in the background. It was
+  re-measured on an idle machine before any figure was written down.
+- **Scripted edits that corrupted code.** Two bulk edits made through
+  generated Python scripts mangled regex backreferences (`\1` became a
+  control character) and silently skipped a replacement. The first was
+  caught by reading the result back, the second by an assertion in the edit
+  script. Both were redone with exact-match edits.
+- **Encoding assumptions.** Two console messages used `→`, which crashed the
+  CLI on a Windows `cp1252` console. Both were replaced with ASCII.
 
 ## Honest status
 
-- **Answer generation is now verified end to end** against the mandated
-  model: 18/18 on the evaluation set (10/10 answered, 8/8 refused), citations
-  emitted on 5/5 sampled calls, 4.2 s typical latency.
+- **Answer generation is verified end to end** against the mandated model.
+  At first delivery: 18/18 on the original evaluation set (10/10 answered,
+  8/8 refused), 4.2 s typical latency. After the eval set grew to 26
+  questions (8 harder answerable ones): **24/26** — 16/18 answerable
+  answered with citations, 8/8 must-refuse refused, zero upstream failures.
+  The two misses are both the cosine-gate overlap described below, not
+  model errors.
+- **Retrieval ranking**, with the reranker: hit@1 17/18, hit@5 18/18,
+  MRR 0.972 (RRF alone: 13/18, 17/18, 0.815). The relevance labels were
+  written by the AI from the passage texts and have not been independently
+  reviewed; with 18 questions this is a clear direction rather than a
+  statistically strong result.
+- **The cosine gate refuses two harder in-chapter questions** (0.626 and
+  0.651, against a highest must-refuse of 0.651). Recorded, deliberately not
+  tuned away; a larger labelled set is the real fix.
 - **The mandated model's free tier has been retired** by OpenRouter; the paid
   slug works. The first live call is what surfaced this, and it also exposed
   a real defect: an empty provider response was being rendered as a refusal
