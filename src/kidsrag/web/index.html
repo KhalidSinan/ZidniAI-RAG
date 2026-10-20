@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ask the Book</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231B2340'/%3E%3Crect x='7' y='7' width='8' height='8' rx='2' fill='%23FFC93C'/%3E%3Crect x='17' y='17' width='8' height='8' rx='2' fill='%23FFC93C'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <!-- The letter A as a computer stores it: 01000001 -->
+      <div class="bits" id="brand-bits" aria-hidden="true" title="This is the letter A in binary: 01000001"></div>
+      <div class="brand-text">
+        <span class="brand-name">Ask the Book</span>
+        <span class="chapter" id="chapter">Chapter: …</span>
+      </div>
+    </div>
+    <button class="reviewer-btn" id="open-reviewer" type="button" disabled>
+      Reviewer view
+    </button>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <h1>What do you want to know about <span class="mark">data</span>?</h1>
+
+      <form class="ask" id="ask-form" autocomplete="off">
+        <label for="question" class="sr-only">Your question</label>
+        <input id="question" name="question" type="text" maxlength="300"
+               placeholder="Type your question here" required>
+        <button type="submit" id="ask-btn">
+          <span>Ask</span>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </form>
+
+      <div class="examples" id="examples" aria-label="Example questions">
+        <span class="examples-label">Try one:</span>
+      </div>
+    </section>
+
+    <section class="result" id="result" aria-live="polite">
+      <article class="answer welcome" id="answer">
+        <div class="answer-tag" id="answer-tag">Hello!</div>
+        <p class="asked" id="asked" hidden></p>
+        <div class="answer-body" id="answer-body"></div>
+      </article>
+
+      <aside class="pages" id="pages" hidden>
+        <h2>Look at these pages</h2>
+        <div class="page-grid" id="page-grid"></div>
+      </aside>
+    </section>
+  </main>
+
+  <dialog class="lightbox" id="lightbox">
+    <form method="dialog"><button class="close" aria-label="Close">✕</button></form>
+    <img id="lightbox-img" alt="">
+    <p id="lightbox-cap"></p>
+  </dialog>
+
+  <dialog class="drawer" id="drawer" aria-labelledby="drawer-title">
+    <div class="drawer-head">
+      <h2 id="drawer-title">Retrieval detail</h2>
+      <form method="dialog"><button class="close" aria-label="Close">✕</button></form>
+    </div>
+    <p class="drawer-note">For reviewers. Shows what the search found for the last question.</p>
+    <div id="drawer-body"></div>
+  </dialog>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
