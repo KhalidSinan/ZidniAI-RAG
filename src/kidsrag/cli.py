@@ -61,7 +61,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_ui = sub.add_parser("ui", help="start the child-facing interface")
     _add_common(p_ui)
     p_ui.add_argument("--port", type=int, default=7860)
-    p_ui.add_argument("--share", action="store_true")
+    p_ui.add_argument(
+        "--host", default="127.0.0.1", help="use 0.0.0.0 to reach it from other devices"
+    )
 
     return parser
 
@@ -153,7 +155,7 @@ def cmd_ui(args) -> int:
     from .app import launch
 
     cfg = load_config(args.config)
-    launch(cfg, port=args.port, share=args.share)
+    launch(cfg, port=args.port, host=args.host)
     return 0
 
 

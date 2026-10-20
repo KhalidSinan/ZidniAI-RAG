@@ -27,7 +27,7 @@ and retrieval work **offline** — the key is only needed to generate answers.
 Verify the environment:
 
 ```bash
-python -c "import pymupdf, fastembed, numpy, httpx, gradio; print('ok')"
+python -c "import pymupdf, fastembed, numpy, httpx, fastapi, uvicorn; print('ok')"
 ```
 
 ## Run
@@ -69,7 +69,7 @@ coexist without collision.
 | `inspect [--passage ID] [--page N]` | Show extracted passages — check chunking before trusting it |
 | `ask "<question>" [--show-retrieval]` | One question; `--show-retrieval` adds the reviewer panel |
 | `eval [--retrieval-only]` | Run the evaluation set; `--retrieval-only` needs no API key |
-| `ui [--port N]` | Start the child-facing interface |
+| `ui [--port N] [--host H]` | Start the child-facing interface at http://127.0.0.1:7860 |
 
 A refusal exits **0** — "the book doesn't cover this" is correct behaviour, not
 a failure. Only missing artifacts or bad config exit 1.
