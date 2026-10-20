@@ -34,6 +34,8 @@ class RetrievalConfig:
     candidates: int = 10
     rrf_k: int = 60
     gate_min_cosine: float = 0.66
+    # fastembed cross-encoder name, or None to keep plain RRF order.
+    reranker: str | None = None
 
 
 @dataclass
@@ -138,6 +140,7 @@ def load_config(path: str | Path = DEFAULT_CONFIG_PATH) -> Config:
         candidates=int(ret.get("candidates", 10)),
         rrf_k=int(ret.get("rrf_k", 60)),
         gate_min_cosine=float(ret.get("gate_min_cosine", 0.66)),
+        reranker=str(ret.get("reranker") or "").strip() or None,
     )
     _check_range("retrieval.top_k", retrieval.top_k, 1, 20)
     _check_range("retrieval.rrf_k", retrieval.rrf_k, 1)

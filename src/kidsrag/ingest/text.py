@@ -170,7 +170,9 @@ class _Builder:
                 max(self.bbox[3], b[3]),
             ]
 
-    def finish(self, page_image_for: dict[int, str]) -> Passage | None:
+    def finish(
+        self, page_image_for: dict[int, str], page_label_for: dict[int, str]
+    ) -> Passage | None:
         text = " ".join(t for t in self.body if t).strip()
         if len(text) < 40:
             return None  # Empty or stub passages are dropped, never indexed.
@@ -192,6 +194,10 @@ class _Builder:
             pages=pages,
             page_images=[page_image_for[p] for p in pages if p in page_image_for],
             bbox=tuple(self.bbox) if self.bbox else None,
+            page_labels=[page_label_for.get(p, str(p)) for p in pages],
+            image_labels=[
+                page_label_for.get(p, str(p)) for p in pages if p in page_image_for
+            ],
         )
 
 
@@ -219,6 +225,10 @@ def build_passages(
 ) -> list[Passage]:
     """Chunk a chapter into passages following spread -> heading structure."""
     page_image_for = page_image_for or {}
+    page_label_for = {
+        pno: doc[pno - 1].get_label() or str(pno)
+        for pno in range(chapter.start_page, chapter.end_page + 1)
+    }
     spreads = spread_starts(doc, chapter)
     if not spreads:
         return []
@@ -248,7 +258,7 @@ def build_passages(
                     continue  # The spread title already heads the passage.
 
                 if _is_section_heading(ln):
-                    done = current.finish(page_image_for)
+                    done = current.finish(page_image_for, page_label_for)
                     if done:
                         passages.append(done)
                     heading = CALLOUT_MARK_RE.sub("", ln.text).strip()
@@ -267,7 +277,7 @@ def build_passages(
                 current.pages.add(ln.page)
                 current.add_bbox(ln.bbox)
 
-        done = current.finish(page_image_for)
+        done = current.finish(page_image_for, page_label_for)
         if done:
             passages.append(done)
 

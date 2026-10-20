@@ -23,6 +23,7 @@ from ..models import (
 )
 from ..render import REFUSAL_TEXT, TROUBLE_TEXT
 from . import llm
+from .evidence import pick_quotes
 from .prompt import build_messages
 
 CITATION_RE = re.compile(r"\[C(\d+)\]")
@@ -78,7 +79,9 @@ def build_response(raw: str, passages: list[Passage]) -> Response:
         return Refusal(text=REFUSAL_TEXT, reason=RefusalReason.NO_CITATIONS)
 
     cited = [passages[i - 1] for i in indices]
-    return Answer(text=text, cited=cited, page_images=select_images(cited))
+    return Answer(
+        text=text, cited=cited, page_images=select_images(cited), markers=indices
+    )
 
 
 def answer_question(
@@ -98,4 +101,7 @@ def answer_question(
         return Trouble(text=TROUBLE_TEXT, detail=str(exc))
 
     # Gate 2: deterministic, model-independent.
-    return build_response(raw, retrieval.passages)
+    response = build_response(raw, retrieval.passages)
+    if isinstance(response, Answer):
+        response.quotes = pick_quotes(response.text, response.cited, response.markers)
+    return response

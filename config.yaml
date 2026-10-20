@@ -18,7 +18,8 @@ chapter:
 
 ingest:
   dpi: 150
-  pipeline_version: "3"
+  # Bumped to 4 when passages gained printed page labels.
+  pipeline_version: "4"
 
 retrieval:
   top_k: 5
@@ -33,6 +34,13 @@ retrieval:
   # NOTE: gating on the FUSED (RRF) score does not work - RRF is rank-based,
   # so the top score is near-constant. See docs/technical-decisions.md
   gate_min_cosine: 0.66
+  # Cross-encoder that reorders RRF candidates before the top_k cut. Measured
+  # on tests/eval/questions.yaml (18 questions with labelled passages):
+  #   RRF only    hit@1 13/18  hit@5 17/18  MRR 0.815
+  #   this model  hit@1 17/18  hit@5 18/18  MRR 0.972
+  # ~80 MB, ~1.2s per answered question on CPU; skipped when the gate refuses.
+  # Set to "" to turn it off. See docs/technical-decisions.md section 14.
+  reranker: "Xenova/ms-marco-MiniLM-L-6-v2"
 
 generation:
   # The model mandated by the brief. As of 2026-10-18 OpenRouter has RETIRED

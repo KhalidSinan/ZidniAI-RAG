@@ -68,7 +68,7 @@ coexist without collision.
 | `ingest [--force]` | Extract, chunk, render pages, embed. Idempotent. |
 | `inspect [--passage ID] [--page N]` | Show extracted passages — check chunking before trusting it |
 | `ask "<question>" [--show-retrieval]` | One question; `--show-retrieval` adds the reviewer panel |
-| `eval [--retrieval-only]` | Run the evaluation set; `--retrieval-only` needs no API key |
+| `eval [--retrieval-only] [--reranker off\|<model>]` | Run the evaluation set; `--retrieval-only` needs no API key and also reports ranking quality (hit@1, MRR) |
 | `ui [--port N] [--host H]` | Start the child-facing interface at http://127.0.0.1:7860 |
 
 A refusal exits **0** — "the book doesn't cover this" is correct behaviour, not
