@@ -53,7 +53,9 @@ function escapeHtml(s) {
 function inline(s) {
   return escapeHtml(s)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|[^*])\*(?!\s)(.+?)\*(?!\*)/g, "$1<em>$2</em>");
+    .replace(/(^|[^*])\*(?!\s)(.+?)\*(?!\*)/g, "$1<em>$2</em>")
+    // [1] footnotes from render.py -> links to "Where I found this".
+    .replace(/\[(\d+)\]/g, '<sup class="fn"><a href="#src-$1" data-src="$1" aria-label="Source $1">$1</a></sup>');
 }
 
 function markdown(text) {
@@ -82,6 +84,60 @@ function showAnswer(kind, text, question) {
   $("asked").hidden = !question;
   $("asked").textContent = question || "";
   $("answer-body").innerHTML = markdown(text);
+  showSources([]);
+}
+
+function showSources(sources) {
+  const list = $("source-list");
+  list.replaceChildren();
+  $("sources").hidden = sources.length === 0;
+  for (const s of sources) {
+    const li = document.createElement("li");
+    li.className = "source";
+    li.id = `src-${s.number}`;
+
+    const num = document.createElement("span");
+    num.className = "source-num";
+    num.textContent = s.number;
+
+    const body = document.createElement("div");
+    const head = document.createElement("div");
+    head.className = "source-head";
+    const section = document.createElement("span");
+    section.className = "source-section";
+    section.textContent = s.section;
+    head.append(section);
+
+    if (s.pages) {
+      const page = document.createElement(s.image ? "button" : "span");
+      page.className = "source-page";
+      page.textContent = s.pages;
+      if (s.image) {
+        page.type = "button";
+        page.setAttribute("aria-label", `Show ${s.pages} of the book`);
+        page.addEventListener("click", () => openLightbox(s.image, s.pages));
+      }
+      head.append(page);
+    }
+    body.append(head);
+
+    if (s.quote) {
+      const quote = document.createElement("blockquote");
+      quote.textContent = s.quote;
+      body.append(quote);
+    }
+    li.append(num, body);
+    list.append(li);
+  }
+}
+
+function flashSource(n) {
+  const el = $(`src-${n}`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  el.classList.remove("flash");
+  void el.offsetWidth;
+  el.classList.add("flash");
 }
 
 function showThinking(question) {
@@ -98,21 +154,17 @@ function showThinking(question) {
   label.textContent = "Looking through the pages…";
   wrap.append(bits, label);
   $("answer-body").replaceChildren(wrap);
+  showSources([]);
   startFlipping(bits);
 }
 
-function pageLabel(url) {
-  const m = url.match(/p0*(\d+)\.png$/);
-  return m ? `Page ${m[1]}` : "Book page";
-}
-
+// images: [{url, label}] - the label is the page number printed in the book.
 function showPages(images) {
   const grid = $("page-grid");
   grid.replaceChildren();
   $("pages").hidden = images.length === 0;
   $("result").classList.toggle("has-pages", images.length > 0);
-  images.forEach((url, i) => {
-    const label = pageLabel(url);
+  images.forEach(({ url, label }, i) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "page";
@@ -146,22 +198,28 @@ function renderRetrieval(r) {
     return;
   }
   const gateClass = r.gate === "PASS" ? "gate-pass" : "gate-refuse";
+  const rr = Boolean(r.reranker);
   const rows = r.rows.map((row) => `
     <tr>
       <td class="num">${row.rank}</td>
+      ${rr ? `<td class="num">${row.rerank?.toFixed(2) ?? "–"}</td>` : ""}
       <td class="num">${row.fused.toFixed(5)}</td>
       <td class="num">${row.dense ?? "–"}</td>
       <td class="num">${row.sparse ?? "–"}</td>
-      <td>${escapeHtml(row.heading)}<span class="pg">p. ${row.pages.join(", ")}</span></td>
+      <td>${escapeHtml(row.heading)}<span class="pg">PDF p. ${row.pages.join(", ")}</span></td>
     </tr>`).join("");
+  const note = rr
+    ? `<p class="drawer-note">Ordered by cross-encoder <code>${escapeHtml(r.reranker)}</code>; RRF chose the candidates.</p>`
+    : `<p class="drawer-note">Ordered by RRF fusion${r.gate === "PASS" ? "" : " (reranker skipped: gate refused)"}.</p>`;
   body.innerHTML = `
     <div class="stats">
       <div class="stat ${gateClass}"><b>${r.gate}</b><small>gate</small></div>
       <div class="stat"><b>${r.max_cosine.toFixed(4)}</b><small>max cosine (min ${r.min_cosine})</small></div>
       <div class="stat"><b>${r.top_fused.toFixed(5)}</b><small>top fused (RRF)</small></div>
     </div>
+    ${note}
     <table class="rtable">
-      <thead><tr><th>#</th><th>Fused</th><th>Dense</th><th>Sparse</th><th>Passage</th></tr></thead>
+      <thead><tr><th>#</th>${rr ? "<th>Rerank</th>" : ""}<th>Fused</th><th>Dense</th><th>Sparse</th><th>Passage</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
@@ -189,6 +247,7 @@ async function ask(question) {
     const data = await res.json();
     stopFlipping();
     showAnswer(data.kind, data.text, question);
+    showSources(data.sources || []);
     showPages(data.images || []);
     lastRetrieval = data.retrieval;
     $("open-reviewer").disabled = !lastRetrieval;
@@ -220,6 +279,14 @@ async function init() {
   $("open-reviewer").addEventListener("click", () => {
     renderRetrieval(lastRetrieval);
     $("drawer").showModal();
+  });
+
+  // Footnote [n] -> highlight its entry in "Where I found this".
+  $("answer-body").addEventListener("click", (e) => {
+    const a = e.target.closest("a[data-src]");
+    if (!a) return;
+    e.preventDefault();
+    flashSource(a.dataset.src);
   });
 
   // Click outside a dialog's content to close it.

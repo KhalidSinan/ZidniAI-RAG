@@ -10,42 +10,96 @@ questions:
   - question: "What is binary code?"
     expect: answerable
     source: data
+    relevant: [data-binary-code, data-binary-code-language-of-computers]
 
   - question: "How does a computer store a letter?"
     expect: answerable
     source: data
+    relevant: [data-ascii-and-unicode, data-ascii-and-unicode-what-is-ascii, data-bits-and-digitization-0-or-1, data-binary-code-language-of-computers, data-ascii-and-unicode-ascii-vs-unicode]
 
   - question: "What is ASCII?"
     expect: answerable
     source: data
+    relevant: [data-ascii-and-unicode-what-is-ascii]
 
   - question: "How are pictures stored on a computer?"
     expect: answerable
     source: data
+    relevant: [data-encoding-images, data-encoding-images-pixels-and-vectors, data-encoding-images-colour-and-light]
 
   - question: "What is encryption?"
     expect: answerable
     source: data
+    relevant: [data-encryption, data-encryption-what-is-encryption]
 
   - question: "What is a database?"
     expect: answerable
     source: data
+    relevant: [data-databases, data-databases-what-are-databases]
 
   - question: "What does a logic gate do?"
     expect: answerable
     source: data
+    relevant: [data-logic-gates, data-logic-gates-making-decisions]
 
   - question: "Why do computers use 0 and 1?"
     expect: answerable
     source: data
+    relevant: [data-bits-and-digitization-why-0-and-1, data-binary-code, data-binary-code-binary-and-switches]
 
   - question: "How is sound stored on a computer?"
     expect: answerable
     source: data
+    relevant: [data-encoding-audio-and-video-encoding-audio-files, data-encoding-audio-and-video-what-affects-audio-quality]
 
   - question: "What is a pixel?"
     expect: answerable
     source: data
+    relevant: [data-encoding-images-pixels-and-vectors]
+
+  # ---- answerable, harder: paraphrased or narrow (retrieval benchmark) ----
+  # Added with the reranker. `relevant` lists every passage that answers the
+  # question; a hit is any of them in the top_k.
+  - question: "What is a byte?"
+    expect: answerable
+    source: data
+    relevant: [data-bits-and-digitization-0-or-1]
+
+  - question: "How many pictures does a film show every second?"
+    expect: answerable
+    source: data
+    relevant: [data-encoding-audio-and-video-frames-per-second, data-encoding-audio-and-video-encoding-video-files]
+
+  - question: "How do you search a database?"
+    expect: answerable
+    source: data
+    relevant: [data-databases-searching-through-databases]
+
+  - question: "What are emoji?"
+    expect: answerable
+    source: data
+    relevant: [data-ascii-and-unicode-2]
+
+  - question: "How can two people share secret messages without meeting?"
+    expect: answerable
+    source: data
+    relevant: [data-encryption-public-key-encryption]
+
+  - question: "Why are photo files so big?"
+    expect: answerable
+    source: data
+    relevant: [data-encoding-images-why-are-image-files-so-large]
+
+  - question: "How does a computer add numbers?"
+    expect: answerable
+    source: data
+    relevant: [data-logic-gates-combining-gates]
+
+  - question: "What makes a song sound better or worse on a computer?"
+    expect: answerable
+    source: data
+    relevant: [data-encoding-audio-and-video-what-affects-audio-quality]
+
 
   # ---- must refuse: other chapters of the same book ------------------------
   - question: "What is a gaming console?"

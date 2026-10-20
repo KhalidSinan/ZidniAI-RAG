@@ -57,6 +57,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="test the refusal gate without calling the model",
     )
+    p_eval.add_argument(
+        "--reranker",
+        help="override retrieval.reranker for this run: a model name, or 'off'",
+    )
 
     p_ui = sub.add_parser("ui", help="start the child-facing interface")
     _add_common(p_ui)
@@ -74,7 +78,7 @@ def cmd_ingest(args) -> int:
     cfg = load_config(args.config)
     report = ingest(cfg, force=args.force)
     print(report.render())
-    print(f"→ {cfg.chapter_dir}")
+    print(f"-> {cfg.chapter_dir}")
     return 0
 
 
@@ -124,10 +128,16 @@ def cmd_ask(args) -> int:
     view = render(response)
 
     print(view.text)
+    if view.sources:
+        print("\nWhere I found this:")
+        for s in view.sources:
+            print(f"  [{s.number}] {s.section} - {s.pages}")
+            if s.quote:
+                print(f'      "{s.quote}"')
     if view.images:
         print("\nPages from the book:")
         for img in view.images:
-            print(f"  {cfg.chapter_dir / img}")
+            print(f"  {img.label}: {cfg.chapter_dir / img.path}")
 
     if args.show_retrieval:
         print("\n--- retrieval (reviewer view) ---")
@@ -136,9 +146,11 @@ def cmd_ask(args) -> int:
               f"min {cfg.retrieval.gate_min_cosine})  "
               f"top fused {result.top_score:.5f}")
         for p, s in zip(result.passages, result.scores):
+            rr = result.rerank_scores.get(p.id)
+            rr_col = f"rerank={rr:6.2f}  " if rr is not None else ""
             print(
                 f"  {s:.5f}  dense={result.dense_ranks.get(p.id, '-'):>3} "
-                f"sparse={result.sparse_ranks.get(p.id, '-'):>3}  {p.id}"
+                f"sparse={result.sparse_ranks.get(p.id, '-'):>3}  {rr_col}{p.id}"
             )
     # A refusal is correct behaviour, not failure (contracts/pipeline-cli.md).
     return 0
@@ -148,6 +160,8 @@ def cmd_eval(args) -> int:
     from .evaluate import run_eval
 
     cfg = load_config(args.config)
+    if args.reranker:
+        cfg.retrieval.reranker = None if args.reranker == "off" else args.reranker
     return run_eval(cfg, Path(args.questions), retrieval_only=args.retrieval_only)
 
 

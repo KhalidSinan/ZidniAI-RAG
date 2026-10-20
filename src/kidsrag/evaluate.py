@@ -7,6 +7,10 @@ fail the run: their correctness is a human judgement against the book
 
 --retrieval-only exercises the gate without spending LLM calls, which is how
 the threshold gets calibrated and how CI can run without a key.
+
+Questions with a `relevant:` list also score RANKING: is a passage that
+answers the question in the top_k, and how high? That is what the reranker
+is judged on (docs/technical-decisions.md section 14).
 """
 
 from __future__ import annotations
@@ -24,6 +28,22 @@ def load_questions(path: Path) -> list[dict]:
     return data.get("questions", [])
 
 
+def first_relevant_rank(passage_ids: list[str], relevant: list[str]) -> int | None:
+    """1-based rank of the first relevant passage, or None if none retrieved."""
+    for rank, pid in enumerate(passage_ids, start=1):
+        if pid in relevant:
+            return rank
+    return None
+
+
+def ranking_summary(ranks: list[int | None]) -> str:
+    n = len(ranks)
+    hit1 = sum(1 for r in ranks if r == 1)
+    hitk = sum(1 for r in ranks if r is not None)
+    mrr = sum(1 / r for r in ranks if r) / n
+    return f"hit@1 {hit1}/{n}   hit@top_k {hitk}/{n}   MRR {mrr:.3f}"
+
+
 def run_eval(cfg: Config, path: Path, retrieval_only: bool = False) -> int:
     from .generate.answer import answer_question
     from .index.retrieve import Retriever
@@ -36,10 +56,14 @@ def run_eval(cfg: Config, path: Path, retrieval_only: bool = False) -> int:
     retriever = Retriever.load(cfg)
 
     rows: list[tuple[str, str, str, bool, float]] = []
+    ranked: list[tuple[str, int | None]] = []
     for item in questions:
         q = item["question"]
         expect = item.get("expect", "answerable")
         result = retriever.retrieve(q)
+        if item.get("relevant"):
+            ids = [p.id for p in result.passages]
+            ranked.append((q, first_relevant_rank(ids, item["relevant"])))
 
         if retrieval_only:
             actual = "answerable" if result.passed_gate else "refuse"
@@ -71,6 +95,21 @@ def run_eval(cfg: Config, path: Path, retrieval_only: bool = False) -> int:
 
     print(f"\nAnswerable: {a_ok}/{len(answerable)} reached an answer")
     print(f"Must refuse: {r_ok}/{len(refusals)} refused")
+    if answerable and refusals:
+        lowest = min(answerable, key=lambda r: r[4])
+        highest = max(refusals, key=lambda r: r[4])
+        print(
+            f"Gate margin: lowest answerable {lowest[4]:.4f}, "
+            f"highest must-refuse {highest[4]:.4f} "
+            f"(threshold {cfg.retrieval.gate_min_cosine})"
+        )
+
+    if ranked:
+        reranker = cfg.retrieval.reranker or "off"
+        print(f"\nRanking (top_k={cfg.retrieval.top_k}, reranker={reranker})")
+        for q, rank in ranked:
+            print(f"  {str(rank) if rank else 'miss':>4s}  {q[:60]}")
+        print("  " + ranking_summary([r for _, r in ranked]))
 
     troubles = [r for r in rows if r[2] == "trouble"]
     if troubles:

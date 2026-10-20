@@ -55,12 +55,18 @@ def _panel(result: RetrievalResult, cfg: Config) -> dict:
         "max_cosine": round(result.max_cosine, 4),
         "min_cosine": cfg.retrieval.gate_min_cosine,
         "top_fused": round(result.top_score, 5),
+        "reranker": cfg.retrieval.reranker if result.rerank_scores else None,
         "rows": [
             {
                 "rank": i,
                 "fused": round(s, 5),
                 "dense": result.dense_ranks.get(p.id),
                 "sparse": result.sparse_ranks.get(p.id),
+                "rerank": (
+                    round(result.rerank_scores[p.id], 2)
+                    if p.id in result.rerank_scores
+                    else None
+                ),
                 "heading": p.heading_display,
                 "pages": p.pages,
             }
@@ -96,19 +102,41 @@ def build_app(cfg: Config) -> FastAPI:
 
         question = body.question.strip()
         if not question:
-            return {"kind": "welcome", "text": WELCOME, "images": [], "retrieval": None}
+            return {
+                "kind": "welcome",
+                "text": WELCOME,
+                "images": [],
+                "sources": [],
+                "retrieval": None,
+            }
 
         result = retriever.retrieve(question)
         response = answer_question(cfg, question, result)
         view = render(response)
 
+        def url(path: str | None) -> str | None:
+            return f"/book/{path}" if path and (chapter_dir / path).exists() else None
+
         images = [
-            f"/book/{img}" for img in view.images if (chapter_dir / img).exists()
+            {"url": url(img.path), "label": img.label}
+            for img in view.images
+            if url(img.path)
+        ]
+        sources = [
+            {
+                "number": s.number,
+                "section": s.section,
+                "pages": s.pages,
+                "quote": s.quote,
+                "image": url(s.image),
+            }
+            for s in view.sources
         ]
         return {
             "kind": view.kind,
             "text": view.text,
             "images": images,
+            "sources": sources,
             "retrieval": _panel(result, cfg),
         }
 

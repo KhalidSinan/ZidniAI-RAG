@@ -346,3 +346,94 @@ polluting the grounding metric.
 
 The 5 failures are upstream throttling, not grounding failures — the runner
 reports them separately for exactly this reason.
+
+---
+
+## 14. Cross-encoder reranking — adopted after measuring
+
+**Problem.** RRF fuses two rankings, but neither retriever reads the question
+and the passage *together*. "How does a computer store a letter?" retrieved no
+relevant passage in the top 5: the answer is spread across "Binary code ›
+Language of computers" and "Bits and digitization › 0 or 1", which RRF ranked
+5th and 6th behind passages that merely share words.
+
+**Decision.** After RRF, every candidate (the union of the dense and BM25 top
+10, ~15–20 passages) is rescored by a cross-encoder and the best `top_k` kept.
+RRF still chooses the *candidates*; the cross-encoder chooses the *order*.
+It runs on fastembed's ONNX runtime like the embedder — no PyTorch, no extra
+network call. Switch: `retrieval.reranker` in `config.yaml` (`""` disables);
+`kidsrag eval --retrieval-only --reranker off|<model>` compares on one run.
+
+**Measurement.** The eval set gained `relevant:` passage labels for every
+answerable question, plus 8 harder paraphrased or narrow ones ("How can two
+people share secret messages without meeting?"), giving 18 ranked questions:
+
+| Reranker | hit@1 | hit@5 | MRR |
+|---|---|---|---|
+| none (RRF only) | 13/18 | 17/18 | 0.815 |
+| `Xenova/ms-marco-MiniLM-L-6-v2` (80 MB) — **chosen** | **17/18** | **18/18** | **0.972** |
+| `Xenova/ms-marco-MiniLM-L-12-v2` (120 MB) | 17/18 | 18/18 | 0.972 |
+| `jinaai/jina-reranker-v1-turbo-en` (150 MB) | 16/18 | 18/18 | 0.921 |
+
+L-12 ties L-6 at 1.5× the size, so the smaller model wins. `bge-reranker-base`
+(1 GB) was not completed: nothing was left to gain over a 18/18 hit rate.
+
+**Cost.** ~1.2 s per answered question on CPU (~70 ms per candidate; long
+passages run to the 512-token limit). Against a ~9 s model call that is
+acceptable. The reranker is **skipped when the gate refuses**, because a
+refusal never uses the order — refusals stay instant.
+
+**Caveat.** 18 questions, labelled by the developer. Four extra first-place
+hits is a clear direction, not a statistically strong result.
+
+### Not adopted: HyDE and multi-query retrieval
+
+Both rewrite the question with the LLM before retrieval. With 44 passages,
+recall was not the problem (17/18 already in the top 5). Both add a paid,
+multi-second model call per question, and HyDE actively undermines the refusal
+gate: the model writes a plausible paragraph even for out-of-chapter
+questions, and that paragraph *does* resemble the chapter, raising the cosine
+the gate depends on.
+
+### Finding: the cosine gate overlaps on harder questions
+
+The 8 new answerable questions exposed a limit of section 7's calibration.
+Two in-chapter questions now fall *below* the threshold and are refused:
+
+| Question | max cosine |
+|---|---|
+| How many pictures does a film show every second? | 0.6259 |
+| What makes a song sound better or worse on a computer? | 0.6511 |
+| *highest must-refuse: What is a search engine?* | *0.6508* |
+
+The bands overlap, so no single cosine threshold separates them. The
+cross-encoder score was tested as an alternative gate and **does not separate
+either** — "How can two people share secret messages without meeting?"
+(answerable) scores −6.52 while "What is a compiler?" (must-refuse) scores
+−3.27. The gate is left unchanged: it still refuses 8/8 must-refuse questions,
+and wrongly refusing is the safer failure for a child (a kind "not in this
+part of the book" versus an invented answer). Tuning a combined rule on 26
+questions would be fitting noise; a larger labelled set is the real fix.
+
+---
+
+## 15. Citations with printed page numbers and supporting quotes
+
+**Decision.** Answers show footnotes `[1] [2]` that link to a "Where I found
+this" list: section name, page, and one verbatim sentence from the cited
+passage. The answer contract already allowed "footnote-style references".
+
+- **Numbering** follows reading order, not retrieval rank: the first source
+  the child meets is [1]. Markers that failed the grounding gate are dropped
+  before numbering (`render.number_citations`).
+- **The quote** is the sentence of the cited passage most similar (local
+  embedder) to the answer sentences that cite it (`generate/evidence.py`). It
+  is the book's own text, so it cannot add anything the book does not say. If
+  embedding fails the first sentence is used — a weaker quote, never a lost
+  answer.
+- **Printed page numbers.** The PDF's page index runs two ahead of the
+  printed numbers (PDF page 82 is printed "80"). Citing the PDF index would
+  send a child holding the book to the wrong page. Passages now store the
+  PDF's own page labels (`page_labels`, `image_labels`), captured at ingest
+  from `page.get_label()`; `pipeline_version` went to 4 so cached chapters
+  rebuild. The reviewer panel keeps PDF indices, labelled as such.

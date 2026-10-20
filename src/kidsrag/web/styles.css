@@ -235,6 +235,69 @@ h1 {
 .answer-body li { margin-bottom: .35em; }
 .answer-body strong { font-weight: 700; }
 
+/* Footnotes: small numbered tabs, big enough to tap. */
+.fn { line-height: 0; margin: 0 .04em 0 .1em; vertical-align: baseline; }
+.fn a {
+  display: inline-block; min-width: 1.45em;
+  padding: .24em .34em; border-radius: 6px;
+  font: 700 .7em/1 var(--body); text-align: center; text-decoration: none;
+  color: var(--blue); background: var(--blue-wash);
+  position: relative; top: -.45em;
+}
+.fn a:hover { color: #fff; background: var(--blue); }
+
+/* ---------- Where I found this ---------- */
+
+.sources {
+  margin-top: 1.6rem; padding-top: 1.3rem;
+  border-top: 1.5px dashed var(--line);
+}
+.sources h3 {
+  font: 700 .82rem var(--body);
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 .9rem;
+}
+.source-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; }
+
+.source {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .85rem;
+  padding: .85rem 1rem; border-radius: 14px;
+  background: var(--paper);
+  scroll-margin: 1rem;
+}
+.source.flash { animation: flash 1.2s ease; }
+
+.source-num {
+  display: grid; place-items: center;
+  width: 1.9rem; height: 1.9rem; border-radius: 8px;
+  font: 700 .95rem var(--body);
+  color: #fff; background: var(--blue);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .source-num { color: #0f1426; }
+  :root:not([data-theme="light"]) .fn a:hover { color: #0f1426; }
+}
+
+.source-head { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; }
+.source-section { font-weight: 700; font-size: 1.02rem; }
+.source-page {
+  font: 600 .85rem var(--body);
+  color: var(--ink); background: var(--sun-wash);
+  border: 1.5px solid var(--sun); border-radius: 999px;
+  padding: .12rem .65rem;
+}
+button.source-page { cursor: zoom-in; }
+button.source-page:hover { background: var(--sun); color: #1b2340; }
+
+.source blockquote {
+  margin: .45rem 0 0; padding-left: .8rem;
+  border-left: 3px solid var(--line);
+  font-size: 1.02rem; line-height: 1.55; color: var(--ink-soft);
+}
+.source blockquote::before { content: "“"; }
+.source blockquote::after { content: "”"; }
+
 /* Thinking state: the byte flips while the book is searched. */
 .thinking { display: flex; align-items: center; gap: 1rem; color: var(--ink-soft); }
 .thinking .bits { grid-template-columns: repeat(8, 1fr); background: var(--blue-wash); }
@@ -319,6 +382,7 @@ dialog::backdrop { background: rgb(15 20 38 / .55); }
 
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
 @keyframes slide { from { transform: translateX(40px); opacity: 0; } }
+@keyframes flash { 0%, 40% { box-shadow: 0 0 0 3px var(--blue); } 100% { box-shadow: 0 0 0 3px transparent; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
